@@ -22,23 +22,40 @@ const BackTalkGame = () => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder.current = new MediaRecorder(stream);
+      
+      // Check for supported mime types
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : ''; // Let the browser choose the default format
+      
+      mediaRecorder.current = new MediaRecorder(stream, {
+        ...(mimeType && { mimeType }) // Only include mimeType if we found a supported one
+      });
       
       mediaRecorder.current.ondataavailable = (event: BlobEvent) => {
         audioChunks.current.push(event.data);
       };
 
       mediaRecorder.current.onstop = () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        // Use the same mime type for the Blob
+        const audioBlob = new Blob(audioChunks.current, {
+          type: mimeType || 'audio/mp4' // Fallback to mp4 if no mime type was specified
+        });
         const audioUrl = URL.createObjectURL(audioBlob);
+        console.log('AUDIO URL FROM RECORDING', audioUrl);
         setAudioUrl(audioUrl);
         setGameState(prev => ({ ...prev, hasRecording: true }));
         audioChunks.current = [];
+
+        stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.current.start();
       setGameState(prev => ({ ...prev, isRecording: true }));
     } catch (err) {
+      console.error('Recording error:', err);
       setGameState(prev => ({ 
         ...prev, 
         feedback: 'Please enable microphone access to play'
@@ -53,9 +70,11 @@ const BackTalkGame = () => {
     }
   };
 
+  
   const playRecording = (audioUserUrl: string | null) => {
     if (audioUserUrl) {
       const audio = new Audio(audioUserUrl);
+      audio.volume = 1;
       audio.play();
       setGameState(prev => ({
         ...prev,
