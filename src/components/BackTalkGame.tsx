@@ -56,7 +56,9 @@ const BackTalkGame = () => {
         setAudioUrl(audioUrl);
         setGameState(prev => ({ ...prev, hasRecording: true }));
         audioChunks.current = [];
-        stream.current.getTracks().forEach(track => track.stop());
+        // Attempting stopping tracks to see if that fixes issue with audio
+        // volume and issue recording/playback after first time
+        // stream.current.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.current.start();
