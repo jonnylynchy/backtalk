@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Play, Mic, Volume2 } from 'lucide-react';
 
 interface AudioChunkTable {
@@ -16,24 +16,30 @@ const BackTalkGame = () => {
   
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream>(new MediaStream());
   const audioChunks = useRef<BlobPart[]>([]);
   const audioChunkList: AudioChunkTable = {};
 
+  useEffect(() => {
+    const getMediaStream = async () => {
+      stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    getMediaStream();
+  });
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
       // Check for supported mime types
       const mimeType = MediaRecorder.isTypeSupported('audio/webm')
         ? 'audio/webm'
         : MediaRecorder.isTypeSupported('audio/mp4')
           ? 'audio/mp4'
           : ''; // Let the browser choose the default format
-      
-      mediaRecorder.current = new MediaRecorder(stream, {
+
+      mediaRecorder.current = new MediaRecorder(stream.current, {
         ...(mimeType && { mimeType }) // Only include mimeType if we found a supported one
       });
-      
+
       mediaRecorder.current.ondataavailable = (event: BlobEvent) => {
         audioChunks.current.push(event.data);
       };
@@ -43,13 +49,14 @@ const BackTalkGame = () => {
         const audioBlob = new Blob(audioChunks.current, {
           type: mimeType || 'audio/mp4' // Fallback to mp4 if no mime type was specified
         });
+
+        console.log('AUDIO BLOB', audioBlob);
         const audioUrl = URL.createObjectURL(audioBlob);
         console.log('AUDIO URL FROM RECORDING', audioUrl);
         setAudioUrl(audioUrl);
         setGameState(prev => ({ ...prev, hasRecording: true }));
         audioChunks.current = [];
-
-        stream.getTracks().forEach(track => track.stop());
+        stream.current.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.current.start();
@@ -63,13 +70,12 @@ const BackTalkGame = () => {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop();
       setGameState(prev => ({ ...prev, isRecording: false }));
     }
   };
-
   
   const playRecording = (audioUserUrl: string | null) => {
     if (audioUserUrl) {
