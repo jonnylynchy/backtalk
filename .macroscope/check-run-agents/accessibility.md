@@ -40,4 +40,4 @@ Meaningful images need `alt` text; decorative ones need empty `alt`. Icon-only b
 
 ### Form controls have labels
 
-Every input must have an associated `<label>` or `aria-label`. Flag inputs that rely on placeholder text alone.
+Every visible input must have an associated `<label>` or `aria-label`. Flag inputs that rely on placeholder text alone. Exclude `input[type="hidden"]`, which is intentionally invisible and unfocusable and does not need a label.
