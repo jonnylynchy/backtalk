@@ -1,11 +1,11 @@
-import BackTalkGame from './components/BackTalkGame';
+import BackTalkGame from "./components/BackTalkGame";
 
 function App() {
-  return (
-    <div className="container">
-      <BackTalkGame />
-    </div>
-  )
+	return (
+		<div className="container">
+			<BackTalkGame />
+		</div>
+	);
 }
 
-export default App
+export default App;
