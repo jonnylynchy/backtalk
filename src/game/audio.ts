@@ -20,6 +20,27 @@ export function getAudioContext(): AudioContext {
 	return ctx;
 }
 
+let unlocked = false;
+
+/**
+ * Unlock audio for iOS/Safari. MUST be called *synchronously* inside a user
+ * gesture (e.g. a click/tap handler, before any `await`). iOS keeps an
+ * AudioContext `suspended` — playing silently — unless it is created/resumed
+ * and a node is started while the gesture is still active. We resume the
+ * context and play a one-sample silent buffer to satisfy that requirement.
+ */
+export function unlockAudio(): void {
+	const context = getAudioContext();
+	if (context.state === "suspended") void context.resume();
+	if (unlocked) return;
+	const buffer = context.createBuffer(1, 1, 22050);
+	const source = context.createBufferSource();
+	source.buffer = buffer;
+	source.connect(context.destination);
+	source.start(0);
+	unlocked = true;
+}
+
 const bufferCache = new Map<string, AudioBuffer>();
 
 /** Fetch + decode an audio file, caching the decoded buffer. */
