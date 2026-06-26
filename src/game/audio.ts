@@ -30,15 +30,26 @@ let unlocked = false;
  * context and play a one-sample silent buffer to satisfy that requirement.
  */
 export function unlockAudio(): void {
-	const context = getAudioContext();
-	if (context.state === "suspended" || context.state === "interrupted") void context.resume();
-	if (unlocked) return;
-	const buffer = context.createBuffer(1, 1, 22050);
-	const source = context.createBufferSource();
-	source.buffer = buffer;
-	source.connect(context.destination);
-	source.start(0);
-	unlocked = true;
+	// Best-effort: if the AudioContext is unavailable this must not throw, so
+	// callers (tap handlers) degrade gracefully rather than raising uncaught.
+	try {
+		const context = getAudioContext();
+		// "interrupted" is a non-standard but real iOS Safari state (e.g. after a
+		// phone call); cast to string since it's absent from AudioContextState.
+		const state = context.state as string;
+		if (state === "suspended" || state === "interrupted") {
+			void context.resume();
+		}
+		if (unlocked) return;
+		const buffer = context.createBuffer(1, 1, 22050);
+		const source = context.createBufferSource();
+		source.buffer = buffer;
+		source.connect(context.destination);
+		source.start(0);
+		unlocked = true;
+	} catch (err) {
+		console.warn("Audio unlock failed:", err);
+	}
 }
 
 const bufferCache = new Map<string, AudioBuffer>();

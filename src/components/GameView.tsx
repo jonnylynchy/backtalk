@@ -51,11 +51,11 @@ export function GameView({ level, levelNumber, recorder }: Props) {
 	const isBusy = isRequesting || isRecording;
 
 	const play = async (reverse: boolean) => {
-		// Unlock iOS audio synchronously, inside the tap, before any await.
-		unlockAudio();
 		setPlayError(null);
 		setPlaying(reverse ? "bwd" : "fwd");
 		try {
+			// Unlock iOS audio synchronously, inside the tap, before any await.
+			unlockAudio();
 			await playClip(level.audio, { reverse });
 		} catch (err) {
 			console.error(err);
