@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Mic } from "lucide-react";
 import type { Level } from "../game/levels";
-import { playClip, stopPlayback } from "../game/audio";
+import { playClip, stopPlayback, unlockAudio } from "../game/audio";
 import type { useRecorder } from "../hooks/useRecorder";
 import { RECORD_SECONDS } from "../hooks/useRecorder";
 import { LevelBadge } from "./LevelBadge";
@@ -54,6 +54,8 @@ export function GameView({ level, levelNumber, recorder }: Props) {
 		setPlayError(null);
 		setPlaying(reverse ? "bwd" : "fwd");
 		try {
+			// Unlock iOS audio synchronously, inside the tap, before any await.
+			unlockAudio();
 			await playClip(level.audio, { reverse });
 		} catch (err) {
 			console.error(err);
@@ -66,6 +68,7 @@ export function GameView({ level, levelNumber, recorder }: Props) {
 	};
 
 	const begin = () => {
+		unlockAudio();
 		stopPlayback();
 		setPlaying(null);
 		setPlayError(null);

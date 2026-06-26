@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	blobToBuffer,
-	getAudioContext,
 	playBuffer,
 	stopPlayback,
+	unlockAudio,
 } from "../game/audio";
 
 export const RECORD_SECONDS = 5;
@@ -70,7 +70,7 @@ export function useRecorder() {
 
 		// Unlock the AudioContext while we still have the user gesture, so the
 		// reversed clip can auto-play later (iOS/Safari blocks otherwise).
-		getAudioContext();
+		unlockAudio();
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
