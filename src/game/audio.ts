@@ -31,7 +31,7 @@ let unlocked = false;
  */
 export function unlockAudio(): void {
 	const context = getAudioContext();
-	if (context.state === "suspended") void context.resume();
+	if (context.state === "suspended" || context.state === "interrupted") void context.resume();
 	if (unlocked) return;
 	const buffer = context.createBuffer(1, 1, 22050);
 	const source = context.createBufferSource();
