@@ -27,11 +27,21 @@ export async function loadBuffer(url: string): Promise<AudioBuffer> {
 	const cached = bufferCache.get(url);
 	if (cached) return cached;
 
-	const res = await fetch(url);
-	const arrayBuffer = await res.arrayBuffer();
-	const audioBuffer = await getAudioContext().decodeAudioData(arrayBuffer);
-	bufferCache.set(url, audioBuffer);
-	return audioBuffer;
+	try {
+		const res = await fetch(url);
+		if (!res.ok) {
+			throw new Error(`HTTP ${res.status} ${res.statusText}`);
+		}
+		const arrayBuffer = await res.arrayBuffer();
+		const audioBuffer = await getAudioContext().decodeAudioData(
+			arrayBuffer
+		);
+		bufferCache.set(url, audioBuffer);
+		return audioBuffer;
+	} catch (err) {
+		const detail = err instanceof Error ? err.message : String(err);
+		throw new Error(`Could not load audio clip "${url}": ${detail}`);
+	}
 }
 
 /** Return a NEW buffer with every channel reversed (never mutates input). */
@@ -57,21 +67,31 @@ export async function blobToBuffer(blob: Blob): Promise<AudioBuffer> {
 }
 
 let currentSource: AudioBufferSourceNode | null = null;
+/** Resolver for the in-flight playBuffer() promise, so we can settle it
+ *  when playback is interrupted (otherwise callers awaiting it hang). */
+let resolveCurrent: (() => void) | null = null;
 
-/** Stop whatever is currently playing through the engine. */
+/** Stop whatever is currently playing and settle its pending promise. */
 export function stopPlayback(): void {
-	if (currentSource) {
+	const source = currentSource;
+	const resolve = resolveCurrent;
+	currentSource = null;
+	resolveCurrent = null;
+
+	if (source) {
+		// Drop onended so it can't double-settle, then stop.
+		source.onended = null;
 		try {
-			currentSource.onended = null;
-			currentSource.stop();
+			source.stop();
 		} catch {
 			/* already stopped */
 		}
-		currentSource = null;
 	}
+	resolve?.();
 }
 
-/** Play a buffer (optionally reversed). Resolves when playback ends. */
+/** Play a buffer (optionally reversed). Resolves when playback ends OR is
+ *  interrupted by another playback / stopPlayback(). */
 export function playBuffer(
 	buffer: AudioBuffer,
 	opts: { reverse?: boolean } = {}
@@ -84,8 +104,12 @@ export function playBuffer(
 	currentSource = source;
 
 	return new Promise((resolve) => {
+		resolveCurrent = resolve;
 		source.onended = () => {
-			if (currentSource === source) currentSource = null;
+			if (currentSource === source) {
+				currentSource = null;
+				resolveCurrent = null;
+			}
 			resolve();
 		};
 		source.start();

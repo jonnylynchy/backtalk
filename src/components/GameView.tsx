@@ -45,16 +45,21 @@ function TimerRing({
 
 export function GameView({ level, levelNumber, recorder }: Props) {
 	const [playing, setPlaying] = useState<"fwd" | "bwd" | null>(null);
+	const [playError, setPlayError] = useState<string | null>(null);
 	const isRequesting = recorder.status === "requesting";
 	const isRecording = recorder.status === "recording";
 	const isBusy = isRequesting || isRecording;
 
 	const play = async (reverse: boolean) => {
+		setPlayError(null);
 		setPlaying(reverse ? "bwd" : "fwd");
 		try {
 			await playClip(level.audio, { reverse });
-		} catch {
-			/* ignore playback errors */
+		} catch (err) {
+			console.error(err);
+			setPlayError(
+				"Couldn't play that clip. Check your connection and try again."
+			);
 		} finally {
 			setPlaying(null);
 		}
@@ -63,6 +68,7 @@ export function GameView({ level, levelNumber, recorder }: Props) {
 	const begin = () => {
 		stopPlayback();
 		setPlaying(null);
+		setPlayError(null);
 		void recorder.start();
 	};
 
@@ -142,6 +148,12 @@ export function GameView({ level, levelNumber, recorder }: Props) {
 							onClick={() => play(true)}
 						/>
 					</div>
+
+					{playError && (
+						<p className="play-error" role="alert">
+							{playError}
+						</p>
+					)}
 
 					<div className="spacer" />
 
